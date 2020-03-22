@@ -1,56 +1,48 @@
-function eval() {
-    // Do not use eval!!!
-    return;
+const numReg = "(-?[\\d.]+(e(\\+|-)\\d+)?)",
+      opsRegs = ["([/*])", "([+-])"],
+
+      doubleOpsFix = expr => expr
+        .replace(/(\d)(--)(\d)/g, "$1+$3").replace(/(\d)(-)(\d)/g, "$1+-$3"),
+
+      ops = {
+        "+": (a, b) => Number(a) + Number(b),
+        "-": (a, b) => a - b,
+        "*": (a, b) => a * b,
+        "/": (a, b) => {
+          if (!Number(b)) throw new Error("TypeError: Division by zero.")
+          return a / b
+        }
+      }
+
+exports.expressionCalculator = expr => {
+  expr = expr.replace(/\s*/g, "")
+  const parenthesis = expr.match(/\(|\)/g)
+  if (parenthesis) {
+    let count = 0
+    for (const char of parenthesis) {
+      if (char === "(") count++
+      else count--
+      if (count<0) throw new Error("ExpressionError: Brackets must be paired")
+    }
+    if (count>0) throw new Error("ExpressionError: Brackets must be paired")
+    while (true) {
+      const subExpr = expr.match(/\([^()]+\)/)
+      if (!subExpr) break
+      expr = expr.replace(subExpr[0], calc(subExpr[0].slice(1, -1)))
+    }
+  }
+  return calc(expr)
 }
 
-function expressionCalculator(expr) {
-    const numberStack = expr.match(/[0-9]+/g);
-    const operatorStack = expr.match(/\+|-|\*|\/|\(|\)/g);
-    // const priorityStack = {'+':1,'-':1,'*':2,'/':2,'(':3,')':3};
-
-    const findDeepestBrackets = expr.match(/\([^()]*\)/); 
-    
-    // 1) match(/\([^()]*\)/) 2) split(/(\([^()]*\))/) 3) match(/\([^()]*\)/) 4) replace(/ /g, "").replace(/\((.*)\)/,"$1");
-    // 5) .replace(/ /g, "").replace(/^\((.*)\)$/,"$1") 
-
-    numberStack.forEach((element, index, array) => {
-      element
-    });
-    
-    const parseParenthesis = (expr) => {
-       return parsePlus(expr.replace(/ /g, "").replace(/^\((.*)\)$/,"$1"));
-    };
-
-    const parsePlus = (expr) => {
-        return expr.split('+')
-          .map(item => parseMinus(item))
-          .reduce((acc, item) => +acc + +item)
-    };
-    
-      const parseMinus = (expr) => {
-        return expr.split('–')
-          .map(item => parseMultiply(item))
-          .reduce((acc, item) => acc - item)
-    };
-    
-      const parseMultiply = (expr) => {
-        return expr.split('*')
-          .map(item => parseDivide(item))
-          .reduce((acc, item) => acc * item)
-    };
-    
-      const parseDivide = (expr) => {
-        return expr.split('/')
-          .map(item => parseParenthesis(item))
-          .reduce((acc, item) => acc / item)
-    };
-    
+function calc(expr) {
+  for (const opsReg of opsRegs) {
+    while (true) {
+      expr = doubleOpsFix(expr)
+      const nextToCalc = expr.match(new RegExp(numReg + opsReg + numReg))
+      if (!nextToCalc) break
+      const [subExpr, left, , , op, right] = nextToCalc
+      expr = expr.replace(subExpr, ops[op](left, right))
+    }
+  }
+  return +expr
 }
-
-module.exports = {
-    expressionCalculator
-}
-
-
-
-93 * 30 / 81 * (  78 * 83 / (  71 * 13 - (  14 + 13 - 28 * 62  ) * 62  ) + 99 - (  80 - 89 + 17 * 42  )  )
